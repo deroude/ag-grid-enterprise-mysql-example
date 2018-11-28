@@ -1,23 +1,16 @@
-
-Sample Data
-=
-
-1. Install the MySQL database.
-2. Create a database called ```sample_data```.
-3. From the command line run the following:
-```mysql -u root -p -D sample_data < ./olympic_winners.sql```
-
-
 Running The Project
 =
 
 1. Install NPM dependencies:
 ```npm install```
 
-2. Build using webpack
-```./node_modules/.bin/webpack```
+2. Run Postgres with Docker (skip this if you have an installed version
+```docker-compose up```
 
-3. Run the web server
-```node start.js```
+3. Populate the sample data
+```npm run migrate```
+
+4. Run the web server
+```npm start```
 
 Then browse to http://localhost:3000/
