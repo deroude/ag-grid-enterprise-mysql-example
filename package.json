@@ -20,15 +20,20 @@
     "ag-grid": "10.0.x",
     "ag-grid-enterprise": "10.0.x"
   },
+  "scripts": {
+    "migrate": "flyway -c conf/flyway.js migrate",
+    "start": "node start.js"
+  },
   "devDependencies": {
     "lodash": "4.17.4",
     "chai": "3.5.0",
     "mocha": "3.2.0",
-    "mysql": "2.13.0",
+    "pg": "^7.6.1",
     "body-parser": "1.17.1",
     "webpack": "2.2.1",
     "express": "4.15.2",
     "style-loader": "0.13.0",
-    "css-loader": "0.23.1"
+    "css-loader": "0.23.1",
+    "node-flywaydb": "^0.1.6"
   }
 }

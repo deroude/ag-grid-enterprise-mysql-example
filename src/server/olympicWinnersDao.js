@@ -1,17 +1,23 @@
-var mysql = require('mysql');
+const { Pool } = require('pg')
 
-var connection = mysql.createConnection({host: 'localhost', user: 'root', password: 'october'});
+const pool = new Pool({
+    user: 'ag',
+    host: 'localhost',
+    database: 'ag',
+    password: 'ag',
+    port: 5432,
+})
 
-function OlympicWinnersDao() {}
+function OlympicWinnersDao() { }
 
-OlympicWinnersDao.prototype.createSelectSql = function(rowGroupCols, valueCols, groupKeys) {
+OlympicWinnersDao.prototype.createSelectSql = function (rowGroupCols, valueCols, groupKeys) {
     if (this.isDoingGrouping(rowGroupCols, groupKeys)) {
         var colsToSelect = [];
 
         var rowGroupCol = rowGroupCols[groupKeys.length];
         colsToSelect.push(rowGroupCol.field);
 
-        valueCols.forEach( function(valueCol) {
+        valueCols.forEach(function (valueCol) {
             colsToSelect.push(valueCol.aggFunc + '(' + valueCol.field + ') as ' + valueCol.field);
         });
 
@@ -22,7 +28,7 @@ OlympicWinnersDao.prototype.createSelectSql = function(rowGroupCols, valueCols, 
     }
 };
 
-OlympicWinnersDao.prototype.createFilterSql = function(key, item) {
+OlympicWinnersDao.prototype.createFilterSql = function (key, item) {
     switch (item.filterType) {
         case 'text': return this.createTextFilterSql(key, item);
         case 'number': return this.createNumberFilterSql(key, item);
@@ -30,12 +36,12 @@ OlympicWinnersDao.prototype.createFilterSql = function(key, item) {
     }
 };
 
-OlympicWinnersDao.prototype.createNumberFilterSql = function(key, item) {
+OlympicWinnersDao.prototype.createNumberFilterSql = function (key, item) {
     switch (item.type) {
         case 'equals':
-            return key + ' = '+ item.filter;
+            return key + ' = ' + item.filter;
         case 'notEqual':
-            return key + ' != '+ item.filter;
+            return key + ' != ' + item.filter;
         case 'greaterThan':
             return key + ' > ' + item.filter;
         case 'greaterThanOrEqual':
@@ -52,27 +58,27 @@ OlympicWinnersDao.prototype.createNumberFilterSql = function(key, item) {
     }
 };
 
-OlympicWinnersDao.prototype.createTextFilterSql = function(key, item) {
+OlympicWinnersDao.prototype.createTextFilterSql = function (key, item) {
     switch (item.type) {
         case 'equals':
-            return key + ' = "'+ item.filter +'"';
+            return key + ' = "' + item.filter + '"';
         case 'notEqual':
-            return key + ' != "'+ item.filter +'"';
+            return key + ' != "' + item.filter + '"';
         case 'contains':
-            return key + ' like "%'+ item.filter +'%"';
+            return key + ' like "%' + item.filter + '%"';
         case 'notContains':
-            return key + ' not like "%'+ item.filter +'%"';
+            return key + ' not like "%' + item.filter + '%"';
         case 'startsWith':
-            return key + ' like "'+ item.filter +'%"';
+            return key + ' like "' + item.filter + '%"';
         case 'endsWith':
-            return key + ' like "%'+ item.filter +'"';
+            return key + ' like "%' + item.filter + '"';
         default:
             console.log('unknown text filter type: ' + item.type);
             return 'true';
     }
 };
 
-OlympicWinnersDao.prototype.createWhereSql = function(rowGroupCols, groupKeys, filterModel) {
+OlympicWinnersDao.prototype.createWhereSql = function (rowGroupCols, groupKeys, filterModel) {
     var that = this;
     var whereParts = [];
 
@@ -85,20 +91,20 @@ OlympicWinnersDao.prototype.createWhereSql = function(rowGroupCols, groupKeys, f
 
     if (filterModel) {
         var keySet = Object.keys(filterModel);
-        keySet.forEach( function(key) {
+        keySet.forEach(function (key) {
             var item = filterModel[key];
             whereParts.push(that.createFilterSql(key, item));
         });
     }
 
-    if (whereParts.length>0) {
+    if (whereParts.length > 0) {
         return ' where ' + whereParts.join(' and ');
     } else {
         return '';
     }
 };
 
-OlympicWinnersDao.prototype.createGroupBySql = function(rowGroupCols, groupKeys) {
+OlympicWinnersDao.prototype.createGroupBySql = function (rowGroupCols, groupKeys) {
     if (this.isDoingGrouping(rowGroupCols, groupKeys)) {
         var colsToGroupBy = [];
 
@@ -112,38 +118,38 @@ OlympicWinnersDao.prototype.createGroupBySql = function(rowGroupCols, groupKeys)
     }
 };
 
-OlympicWinnersDao.prototype.createOrderBySql = function(sortModel) {
+OlympicWinnersDao.prototype.createOrderBySql = function (sortModel) {
     var sortParts = [];
     if (sortModel) {
-        sortModel.forEach( function(item) {
+        sortModel.forEach(function (item) {
             sortParts.push(item.colId + ' ' + item.sort);
         });
     }
-    if (sortParts.length>0) {
+    if (sortParts.length > 0) {
         return ' order by ' + sortParts.join(', ');
     } else {
         return '';
     }
 };
 
-OlympicWinnersDao.prototype.isDoingGrouping = function(rowGroupCols, groupKeys) {
+OlympicWinnersDao.prototype.isDoingGrouping = function (rowGroupCols, groupKeys) {
     // we are not doing grouping if at the lowest level. we are at the lowest level
     // if we are grouping by more columns than we have keys for (that means the user
     // has not expanded a lowest level group, OR we are not grouping at all).
     return rowGroupCols.length > groupKeys.length;
 };
 
-OlympicWinnersDao.prototype.createLimitSql = function(startRow, pageSize) {
+OlympicWinnersDao.prototype.createLimitSql = function (startRow, pageSize) {
     return ' limit ' + (pageSize + 1) + ' offset ' + startRow;
 };
 
-OlympicWinnersDao.prototype.getRowCount = function(startRow, pageSize, results) {
+OlympicWinnersDao.prototype.getRowCount = function (startRow, pageSize, results) {
     // if no results (maybe an error, or user is seeking for a block well past
     // the possible blocks), then return null, which means we don't know what the
     // last row is. the user should never ask for a block that is past the last block,
     // but they could, for example, purge the cache, and since loading last time rows
     // have been removed from the server.
-    if (results===null || results===undefined || results.length===0) {
+    if (results === null || results === undefined || results.length === 0) {
         return null;
     }
 
@@ -162,15 +168,15 @@ OlympicWinnersDao.prototype.getRowCount = function(startRow, pageSize, results) 
     }
 };
 
-OlympicWinnersDao.prototype.cutResultsToPageSize = function(pageSize, results) {
-    if (results && results.length>pageSize) {
+OlympicWinnersDao.prototype.cutResultsToPageSize = function (pageSize, results) {
+    if (results && results.length > pageSize) {
         return results.splice(0, pageSize);
     } else {
         return results;
     }
 };
 
-OlympicWinnersDao.prototype.list = function(request, resultsCallback) {
+OlympicWinnersDao.prototype.list = function (request, resultsCallback) {
 
     var rowGroupCols = request.rowGroupCols;
     var groupKeys = request.groupKeys;
@@ -188,18 +194,22 @@ OlympicWinnersDao.prototype.list = function(request, resultsCallback) {
     var orderBySql = this.createOrderBySql(sortModel);
     var limitSql = this.createLimitSql(startRow, pageSize);
 
-    var sql = selectSql + ' from sample_data.olympic_winners ' + whereSql + groupBySql + orderBySql + limitSql;
+    var sql = selectSql + ' from olympic_winners ' + whereSql + groupBySql + orderBySql + limitSql;
 
     console.log('sql = ' + sql);
     var that = this;
 
-    connection.query(sql, function(error, results, fields) {
-        var rowCount = that.getRowCount(startRow, pageSize, results);
-        var resultsForPage = that.cutResultsToPageSize(pageSize, results);
-
-        resultsCallback(resultsForPage, rowCount);
-    });
-
+    pool.query(sql, (err, res) => {
+        if (err) {
+            console.log(err);
+        }
+        else {
+            var rowCount = that.getRowCount(startRow, pageSize, res);
+            var resultsForPage = that.cutResultsToPageSize(pageSize, res);
+            console.log(resultsForPage);
+            resultsCallback(resultsForPage, rowCount);
+        }
+    })
 };
 
 module.exports = new OlympicWinnersDao();
